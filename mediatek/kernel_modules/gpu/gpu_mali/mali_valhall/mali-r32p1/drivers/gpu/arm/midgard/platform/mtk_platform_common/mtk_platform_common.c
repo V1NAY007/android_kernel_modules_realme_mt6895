@@ -211,12 +211,56 @@ out_lock_held:
 }
 DEFINE_PROC_SHOW_ATTRIBUTE(mtk_common_gpu_memory);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_MEM_TRACK)
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_OSVELTE)
 static int mali_procinfo_show(struct seq_file *s, void *unused)
 {
 	return mtk_common_gpu_memory_show(s, unused);
 }
 DEFINE_PROC_SHOW_ATTRIBUTE(mali_procinfo);
+
+static int mali_procdetail_max_show(struct seq_file *sfile, void *unused)
+{
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	unsigned int sz = 0;
+	unsigned int sz_max = 0;
+	struct kbase_context *kctx = NULL;
+	struct kbase_context *kctx_max = NULL;
+	struct kbase_device *kbdev = (struct kbase_device *)mtk_common_get_kbdev();
+
+	if (IS_ERR_OR_NULL(kbdev))
+		return -ENODEV;
+
+
+	mutex_lock(&memtrack_lock);
+
+	mutex_lock(&kbdev->kctx_list_lock);
+	list_for_each_entry(kctx, &kbdev->kctx_list, kctx_list_link) {
+		sz = atomic_read(&(kctx->used_pages));
+		if(sz > sz_max) {
+			sz_max = sz;
+			kctx_max = kctx;
+		}
+	}
+	if (kctx_max) {
+		atomic_inc(&kctx_max->refcount);
+	}
+	mutex_unlock(&kbdev->kctx_list_lock);
+
+	if (kctx_max) {
+		mutex_lock(&kctx_max->mem_profile_lock);
+		seq_write(sfile, kctx_max->mem_profile_data, kctx_max->mem_profile_size);
+		mutex_unlock(&kctx_max->mem_profile_lock);
+		atomic_dec(&kctx_max->refcount);
+	}
+
+	seq_putc(sfile, '\n');
+	mutex_unlock(&memtrack_lock);
+
+#endif
+	return 0;
+}
+DEFINE_PROC_SHOW_ATTRIBUTE(mali_procdetail_max);
 
 long read_mali_mem_usage(enum mtrack_subtype type)
 {
@@ -284,6 +328,7 @@ static struct mtrack_debugger mali_mtrack_debugger = {
 	.dump_usage_stat = dump_mali_usage_stat,
 };
 #endif /* CONFIG_OPLUS_FEATURE_MM_OSVELTE */
+#endif /* CONFIG_MALI_MTK_MEM_TRACK */
 
 void mtk_common_procfs_init(void)
 {
@@ -300,11 +345,13 @@ void mtk_common_procfs_init(void)
 	proc_create("utilization", 0444, mtk_mali_root, &mtk_common_gpu_utilization_proc_ops);
 	proc_create("gpu_memory", 0444, mtk_mali_root, &mtk_common_gpu_memory_proc_ops);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_MEM_TRACK)
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_OSVELTE)
 	register_mtrack_debugger(MTRACK_GPU, &mali_mtrack_debugger);
 	register_mtrack_procfs(MTRACK_GPU, "procinfo", 0444,
 			       &mali_procinfo_proc_ops, NULL);
 #endif /* CONFIG_OPLUS_FEATURE_MM_OSVELTE */
+#endif /* CONFIG_MALI_MTK_MEM_TRACK */
 }
 
 void mtk_common_procfs_exit(void)
@@ -318,10 +365,12 @@ void mtk_common_procfs_exit(void)
 	remove_proc_entry("utilization", mtk_mali_root);
 	remove_proc_entry("gpu_memory", mtk_mali_root);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_MEM_TRACK)
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_OSVELTE)
 	unregister_mtrack_debugger(MTRACK_GPU, &mali_mtrack_debugger);
 	unregister_mtrack_procfs(MTRACK_GPU, "procinfo");
 #endif /* CONFIG_OPLUS_FEATURE_MM_OSVELTE */
+#endif /* CONFIG_MALI_MTK_MEM_TRACK */
 
 	remove_proc_entry("mtk_mali", NULL);
 }
