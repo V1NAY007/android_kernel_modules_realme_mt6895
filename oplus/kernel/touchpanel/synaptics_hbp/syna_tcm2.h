@@ -672,6 +672,7 @@ struct syna_tcm {
 	int driver_current_state;
 	int single_tap_pressed;
 	int double_tap_pressed;
+	int fp_pressed;
 
 	unsigned int waiting_frame;
 	unsigned int wait_for_ioctl_operation;
