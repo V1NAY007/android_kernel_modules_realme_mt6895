@@ -1105,19 +1105,8 @@ static irqreturn_t syna_dev_isr(int irq, void *data)
 		syna_tcm_test_report(tcm, code);
 		goto exit;
 	}
-#ifdef ENABLE_EXTERNAL_FRAME_PROCESS
-	if (tcm->report_to_queue[code] == EFP_ENABLE) {
-		syna_tcm_buf_lock(&tcm->tcm_dev->external_buf);
-		syna_cdev_update_report_queue(tcm, code,
-		    &tcm->tcm_dev->external_buf);
-		syna_tcm_buf_unlock(&tcm->tcm_dev->external_buf);
-#ifndef REPORT_CONCURRENTLY
-		goto exit;
-#endif
-	}
-#endif
-	/* report input event only when receiving a touch report */
 
+	/* report input event only when receiving a touch report */
 	if (code == REPORT_TOUCH) {
 		/* parse touch report once received */
 		retval = syna_tcm_parse_touch_report(tcm->tcm_dev,
@@ -1131,6 +1120,18 @@ static irqreturn_t syna_dev_isr(int irq, void *data)
 		/* forward the touch event to system */
 		syna_dev_report_input_events(tcm);
 	}
+
+#ifdef ENABLE_EXTERNAL_FRAME_PROCESS
+	if (tcm->report_to_queue[code] == EFP_ENABLE) {
+		syna_tcm_buf_lock(&tcm->tcm_dev->external_buf);
+		syna_cdev_update_report_queue(tcm, code,
+		    &tcm->tcm_dev->external_buf);
+		syna_tcm_buf_unlock(&tcm->tcm_dev->external_buf);
+#ifndef REPORT_CONCURRENTLY
+		goto exit;
+#endif
+	}
+#endif
 
 exit:
 	tcm->irq_cost_time = ktime_to_us(ktime_get()) - ktime_to_us(irq_cost_timer);
