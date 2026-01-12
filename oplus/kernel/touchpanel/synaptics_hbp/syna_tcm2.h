@@ -670,11 +670,9 @@ struct syna_tcm {
 	int daemon_state;
 	int primary_timestamp_enabled;
 	int driver_current_state;
-	atomic_t single_tap_pressed;
-	atomic_t double_tap_pressed;
-	atomic_t fp_pressed;
-	unsigned short touch_rate;
-	unsigned short glove_mode;
+	int single_tap_pressed;
+	int double_tap_pressed;
+	int fp_pressed;
 
 	unsigned int waiting_frame;
 	unsigned int wait_for_ioctl_operation;
