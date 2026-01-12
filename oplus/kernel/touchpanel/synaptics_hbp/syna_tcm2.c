@@ -3122,6 +3122,25 @@ static int syna_dev_probe(struct platform_device *pdev)
 	}
 #endif
 
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
+	/*step10 : FTM process*/
+	tcm->boot_mode = get_boot_mode();
+#endif
+	if (is_ftm_boot_mode(tcm)) {
+		retval = syna_tcm_sleep(tcm->tcm_dev, true);
+		if (retval < 0) {
+			LOGE("Fail to enter deep sleep\n");
+		}
+		syna_dev_release_irq(tcm);
+
+		if (tcm->health_monitor_support) {
+			tp_healthinfo_report(&tcm->monitor_data, HEALTH_PROBE, &time_counter);
+		}
+
+		LOGI("%s: not in normal mode, return.\n", __func__);
+		return 0;
+	}
+
 	//set custom atomic adds
 	atomic_set(&tcm->single_tap_pressed, 0);
 	atomic_set(&tcm->double_tap_pressed, 0);
