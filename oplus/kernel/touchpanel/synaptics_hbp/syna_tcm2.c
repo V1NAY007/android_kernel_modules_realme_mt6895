@@ -1869,7 +1869,6 @@ static int syna_dev_suspend(struct device *dev)
 	struct touchpanel_event event_data;
 	bool irq_disabled = true;
 	u64 start_time = 0;
-	struct fp_underscreen_info fp_info;
 
 	/* exit directly if device is already in suspend state */
 	if (tcm->pwr_state != PWR_ON)
